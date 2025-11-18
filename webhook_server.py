@@ -66,7 +66,15 @@ def ask_chatgpt(user_msg):
     }
 
     resp = requests.post(url, headers=headers, json=body)
-    return resp.json()["choices"][0]["message"]["content"]
+
+    print("🔍 RESPUESTA CHATGPT:", resp.text)  # 👈 agrega esto
+
+    data = resp.json()
+
+    if "choices" not in data:
+        raise Exception(f"Error de ChatGPT: {data}")
+
+    return data["choices"][0]["message"]["content"]
 
 
 # ====== 📌 Función para responder al cliente en WhatsApp ======
@@ -90,4 +98,5 @@ def send_whatsapp_message(to, message):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("webhook_server:app", host="0.0.0.0", port=8000, reload=True)
+
 

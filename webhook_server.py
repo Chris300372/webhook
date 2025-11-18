@@ -1,39 +1,92 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-import uvicorn
+import requests
+import os
 
 app = FastAPI()
 
-# ✅ GET para verificación de Meta (WhatsApp)
+# 🔐 VARIABLES
+VERIFY_TOKEN = "mi_token_secreto"
+WHATSAPP_TOKEN = "EAAgFYmYRz48BPZBg62uERssvIXBocYsZAfvByW20lMryLY89hc7NDkYPRUZANkprLYpuOUjDNXnAV2wQQRDjo5X51YSai0uLJqZCZBfB6IZAXlPvMjjnI6yjZA0ZCSfXqUcPHocIRarh0tZBscLQiWGa0ZCjwr4Ve5F2FgceW054b6s0uoULlZCkASwZAcvmsWohkpFFl3ZCAsBjAJAEpe2icFmwdipZBPYZBx8rSGfkc7yiQmdml1n8t8v1c3gOjIF8hEh3WIDNKLI1g8wdDZAQFMKZBjQsIpRm2XK8bF0ckZBT3m"
+WHATSAPP_PHONE_ID = "103065052613628"
+CHATGPT_API_KEY = "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"
+
 @app.get("/webhook")
 async def verify_webhook(request: Request):
-    # Meta envía estos parámetros en la URL
     params = request.query_params
     mode = params.get("hub.mode")
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
 
-    VERIFY_TOKEN = "mi_token_secreto"  # 🔒 usa el mismo token configurado en Meta
-
-    # Meta requiere que devuelvas el 'challenge' si el token coincide
     if mode == "subscribe" and token == VERIFY_TOKEN:
-        print("✅ Webhook de Meta verificado correctamente.")
         return JSONResponse(content=int(challenge), status_code=200)
     else:
-        print("❌ Verificación fallida. Parámetros recibidos:", params)
         return JSONResponse(content={"error": "Token inválido"}, status_code=403)
 
-# ✅ POST para recibir los mensajes o eventos (Retell / WhatsApp / otros)
+
 @app.post("/webhook")
 async def receive_webhook(request: Request):
+    data = await request.json()
+    print("📩 Webhook recibido:", data)
+
     try:
-        payload = await request.json()
-        print("📞 Webhook recibido:", payload)
-        # Aquí puedes guardar en BD, procesar eventos, responder, etc.
-        return {"status": "ok"}
+        # 🔍 Extraer texto y número
+        message = data["entry"][0]["changes"][0]["value"]["messages"][0]
+        sender = message["from"]
+        text = message["text"]["body"]
+        print(f"📨 Mensaje de {sender}: {text}")
+
+        # 🤖 Enviar a ChatGPT
+        ai_answer = ask_chatgpt(text)
+
+        # 📤 Enviar respuesta por WhatsApp
+        send_whatsapp_message(sender, ai_answer)
+
     except Exception as e:
-        print("❌ Error procesando webhook:", e)
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        print("⚠️ Error procesando mensaje:", e)
+
+    return {"status": "ok"}
+
+
+# ====== 📌 Función para enviar el mensaje a ChatGPT ======
+def ask_chatgpt(user_msg):
+    url = "https://api.openai.com/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {CHATGPT_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "Eres un asistente para una empresa que responde preguntas de clientes."},
+            {"role": "user", "content": user_msg}
+        ]
+    }
+
+    resp = requests.post(url, headers=headers, json=body)
+    return resp.json()["choices"][0]["message"]["content"]
+
+
+# ====== 📌 Función para responder al cliente en WhatsApp ======
+def send_whatsapp_message(to, message):
+    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    body = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "text": {"body": message}
+    }
+
+    requests.post(url, headers=headers, json=body)
+
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("webhook_server:app", host="0.0.0.0", port=8000, reload=True)

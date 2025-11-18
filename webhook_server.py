@@ -9,7 +9,7 @@ app = FastAPI()
 VERIFY_TOKEN = "mi_token_secreto"
 WHATSAPP_TOKEN = "EAAgFYmYRz48BPZBg62uERssvIXBocYsZAfvByW20lMryLY89hc7NDkYPRUZANkprLYpuOUjDNXnAV2wQQRDjo5X51YSai0uLJqZCZBfB6IZAXlPvMjjnI6yjZA0ZCSfXqUcPHocIRarh0tZBscLQiWGa0ZCjwr4Ve5F2FgceW054b6s0uoULlZCkASwZAcvmsWohkpFFl3ZCAsBjAJAEpe2icFmwdipZBPYZBx8rSGfkc7yiQmdml1n8t8v1c3gOjIF8hEh3WIDNKLI1g8wdDZAQFMKZBjQsIpRm2XK8bF0ckZBT3m"
 WHATSAPP_PHONE_ID = "103065052613628"
-CHATGPT_API_KEY = "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"
+CHATGPT_API_KEY = "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"
 
 @app.get("/webhook")
 async def verify_webhook(request: Request):
@@ -90,3 +90,4 @@ def send_whatsapp_message(to, message):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("webhook_server:app", host="0.0.0.0", port=8000, reload=True)
+
